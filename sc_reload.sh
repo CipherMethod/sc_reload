@@ -31,6 +31,7 @@
 # 20211028 - Switch to shuf and set DAY to auto select extra playlists, example halloween
 # 20220505 - Inline rebuild_main.sh and makeplay.sh
 #            Rename reload.sh -> sc_relead.sh
+# 20220507 - Fix DAY output and move to end of list.
 
 echo "randomize and dequeue"
 #~sc/playlists/rebuild_main.sh
@@ -39,7 +40,6 @@ cd /home/sc/playlists
 #./makeplay.sh 1 >main.lst
 
 DAY=$(date +%j)
-echo "DAY: %DAY"
 
 if [ "$1" = "1" ]
 then
@@ -90,6 +90,7 @@ rm dequeue.list song.list
 ID=`ps -ef | grep sc_trans | grep -v grep |awk '{ print $2 }'`
 
 echo
+echo "DAY: $DAY"
 if [ "$ID" ]
 then
    echo "Reloading playlist for sc_trans at $ID"
