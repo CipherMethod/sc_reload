@@ -32,73 +32,68 @@
 # 20220505 - Inline rebuild_main.sh and makeplay.sh
 #            Rename reload.sh -> sc_relead.sh
 # 20220507 - Fix DAY output and move to end of list.
-
-echo "randomize and dequeue"
-#~sc/playlists/rebuild_main.sh
+# 20241030 - Remove run option "1" for special events (add event songs by default)
+#          - Remove shuf of XMAS and Halloween (double shuf fix)
+#          - Remove old deprecated codes line that were commented out
+#          - Added Halloween Day
+#          - General code formatting and output cleanup
+#          - temp.file -> initial.lst, song.list -> song.lst, check.list -> check.lst, dequeue.list -> dequeue.lst
 
 cd /home/sc/playlists
-#./makeplay.sh 1 >main.lst
 
 DAY=$(date +%j)
+# start fresh list
+>initial.lst
+echo;echo "Build Initial Playlist"
+# add xmas songs
+[ "$DAY" -gt 350 -a "$DAY" -lt 365 ] && echo "--- XMAS --- " && ls -1 ../music/xmas/*mp3 >>initial.lst
+# add halloween songs
+[ "$DAY" -gt 298 -a "$DAY" -lt 306 ] && echo "--- Halloween General --- " && ls -1 ../music/halloween/*mp3 >>initial.lst
+# add halloween day songs
+[ "$DAY" -eq 305 ] && echo "--- Halloween Day --- " && ls -1 ../music/halloween_day/*mp3 >>initial.lst
+# add samples
+echo "--- Samples ---"
+ls -1 ../music/Samples/*mp3 >>initial.lst
+# add bud commercials
+#ls -1 ../music/Bud\ Light\ Presents/*mp3 | rl >>initial.lst
+echo "--- General Pool ---"
+ls -1 ../music/*mp3 >>initial.lst
+sleep 3 # pause to show holiday specific selection happened
 
-if [ "$1" = "1" ]
-then
- ls -1 ../music/*mp3 | shuf >temp.file 
- # add xmas songs
- [ "$DAY" -gt 350 -a "$DAY" -lt 365 ] && echo "XMAS" && ls -1 ../music/xmas/*mp3 | shuf >>temp.file 
- # add halloween songs
- [ "$DAY" -gt 298 -a "$DAY" -lt 306 ] && echo "Halloween" &&  ls -1 ../music/halloween/*mp3 | shuf >>temp.file
- # add bud
-## ls -1 ../music/Bud\ Light\ Presents/*mp3 | rl >>temp.file
- # add Samples
- ls -1 ../music/Samples/*mp3 | shuf >>temp.file
-else
- ls -1 ../music/*mp3 >temp.file
- ls -1 ../music/Samples/*mp3 >>temp.file
-fi
+cat initial.lst >main.lst
 
-cat temp.file >main.lst
-rm temp.file
-
-#./dra main.lst
-#./dra_v2.sh main.lst
-
-#LIST="$1"
 CHECK=20
 
-# randomize source list
-#rl $LIST >song.list
-shuf main.lst >song.list
+echo;echo "Randomize List and Dequeue Repeats"
+shuf main.lst >song.lst
 
 >dequeue.list
 while read SONG
 do
    echo "Checking: `basename "$SONG"`"
    S0=`basename "$SONG" | cut -c1-4`
-   tail -$CHECK dequeue.list > check.list
-   STAT=`grep "../music/$S0" check.list`
+   tail -$CHECK dequeue.lst > check.lst
+   STAT=`grep "../music/$S0" check.lst`
    #echo "--- $S0 -- $STAT --"
 
    # if STAT is still empty, accept song
-   [ "$STAT" = "" ] && echo "$SONG" >>dequeue.list || echo "        : Found Match for [$S0], Song Dequeued"
+   [ "$STAT" = "" ] && echo "$SONG" >>dequeue.lst || echo "        : Found Match for [$S0], Song Dequeued"
+done < ./song.lst
 
-done < ./song.list
+cat dequeue.lst >main.lst
+rm dequeue.lst song.lst
 
-cat dequeue.list >main.lst
-rm dequeue.list song.list
-
-ID=`ps -ef | grep sc_trans | grep -v grep |awk '{ print $2 }'`
+ID=`pgrep sc_trans`
 
 echo
 echo "DAY: $DAY"
 if [ "$ID" ]
 then
-   echo "Reloading playlist for sc_trans at $ID"
+   echo "Reloading playlist for SHOUTcast Transcoder at PID: $ID."
    kill -USR1 $ID
 else
-   echo "Did not find a running sc_trans"
+   echo "Did not find a running SHOUTcast Transcoder."
 fi
 
 echo
-
 
